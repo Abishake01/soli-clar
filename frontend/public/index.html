@@ -1,19 +1,895 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <link rel="icon" href="%PUBLIC_URL%/favicon.ico" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="theme-color" content="#000000" />
-    <meta
-      name="description"
-      content="Solidity to Clarity Code Converter"
-    />
-    <!-- Removing references to logo files that might be causing 404 errors -->
-    <title>Solidity to Clarity Converter</title>
-  </head>
-  <body>
-    <noscript>You need to enable JavaScript to run this app.</noscript>
-    <div id="root"></div>
-  </body>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Solidity to Clarity Converter with Deployment</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary-color: #4a6cf7;
+            --secondary-color: #6c757d;
+            --success-color: #28a745;
+            --danger-color: #dc3545;
+            --warning-color: #ffc107;
+            --info-color: #17a2b8;
+            --dark-color: #212529;
+            --light-color: #f8f9fa;
+            --sidebar-width: 250px;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background-color: #f5f7fb;
+            color: #333;
+            line-height: 1.6;
+        }
+        
+        .app-container {
+            display: flex;
+            min-height: 100vh;
+        }
+        
+        .sidebar {
+            width: var(--sidebar-width);
+            background-color: var(--dark-color);
+            color: white;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .logo {
+            font-size: 1.5rem;
+            font-weight: bold;
+            margin-bottom: 2rem;
+            color: var(--primary-color);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .logo i {
+            font-size: 1.8rem;
+        }
+        
+        .nav-links {
+            list-style: none;
+        }
+        
+        .nav-links li {
+            margin-bottom: 1rem;
+        }
+        
+        .nav-links a {
+            color: #ddd;
+            text-decoration: none;
+            transition: color 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 0.5rem 0;
+        }
+        
+        .nav-links a:hover, .nav-links a.active {
+            color: white;
+        }
+        
+        .nav-links a i {
+            width: 20px;
+            text-align: center;
+        }
+        
+        .main-content {
+            flex: 1;
+            padding: 2rem;
+            overflow-y: auto;
+        }
+        
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+        
+        .header h1 {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .header h1 i {
+            color: var(--primary-color);
+        }
+        
+        .status-indicators {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+        
+        .status {
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .status.backend {
+            background-color: var(--success-color);
+            color: white;
+        }
+        
+        .status.ready {
+            background-color: var(--secondary-color);
+            color: white;
+        }
+        
+        .status.processing {
+            background-color: var(--warning-color);
+            color: black;
+        }
+        
+        .status.error {
+            background-color: var(--danger-color);
+            color: white;
+        }
+        
+        .converter-container {
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            margin-bottom: 2rem;
+        }
+        
+        .code-panels {
+            display: flex;
+            flex-wrap: wrap;
+            min-height: 400px;
+        }
+        
+        .code-panel {
+            flex: 1;
+            min-width: 300px;
+            border-right: 1px solid #eee;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .code-panel:last-child {
+            border-right: none;
+        }
+        
+        .panel-header {
+            padding: 1rem;
+            background-color: #f8f9fa;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .panel-header h3 {
+            font-size: 1.1rem;
+            color: var(--dark-color);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .code-container {
+            flex: 1;
+            position: relative;
+            overflow: auto;
+        }
+        
+        .code-input {
+            width: 100%;
+            height: 100%;
+            padding: 1rem;
+            border: none;
+            resize: none;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 0.9rem;
+            line-height: 1.5;
+        }
+        
+        .code-input:focus {
+            outline: none;
+        }
+        
+        .code-output {
+            padding: 1rem;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 0.9rem;
+            line-height: 1.5;
+            white-space: pre;
+            overflow: auto;
+            background-color: #f8f9fa;
+            height: 100%;
+        }
+        
+        .action-bar {
+            padding: 1rem;
+            background-color: #f8f9fa;
+            border-top: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+        
+        .convert-btn {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: background-color 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .convert-btn:hover {
+            background-color: #3a5ad9;
+        }
+        
+        .convert-btn:disabled {
+            background-color: var(--secondary-color);
+            cursor: not-allowed;
+        }
+        
+        .error-message {
+            background-color: #ffeaea;
+            color: var(--danger-color);
+            padding: 1rem;
+            border-left: 4px solid var(--danger-color);
+            margin-top: 1rem;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .copy-btn {
+            background-color: transparent;
+            border: 1px solid var(--secondary-color);
+            color: var(--secondary-color);
+            padding: 0.4rem 0.8rem;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .copy-btn:hover {
+            background-color: var(--secondary-color);
+            color: white;
+        }
+        
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 1rem;
+            border-radius: 4px;
+            background-color: var(--success-color);
+            color: white;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transform: translateX(100%);
+            transition: transform 0.3s;
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .notification.show {
+            transform: translateX(0);
+        }
+        
+        .examples {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+        
+        .examples h3 {
+            color: var(--dark-color);
+            font-size: 0.9rem;
+        }
+        
+        .example-buttons {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+        
+        .example-btn {
+            background-color: transparent;
+            border: 1px solid var(--primary-color);
+            color: var(--primary-color);
+            padding: 0.4rem 0.8rem;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 0.8rem;
+        }
+        
+        .example-btn:hover {
+            background-color: var(--primary-color);
+            color: white;
+        }
+        
+        .deployment-panel {
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            margin-bottom: 2rem;
+        }
+        
+        .deployment-header {
+            padding: 1rem;
+            background-color: #f8f9fa;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .deployment-header h2 {
+            font-size: 1.2rem;
+            color: var(--dark-color);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .deployment-content {
+            padding: 1.5rem;
+        }
+        
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+            color: var(--dark-color);
+        }
+        
+        .form-control {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 1rem;
+        }
+        
+        .form-control:focus {
+            outline: none;
+            border-color: var(--primary-color);
+        }
+        
+        .deploy-btn {
+            background-color: var(--success-color);
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: background-color 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .deploy-btn:hover {
+            background-color: #218838;
+        }
+        
+        .deploy-btn:disabled {
+            background-color: var(--secondary-color);
+            cursor: not-allowed;
+        }
+        
+        .deployment-status {
+            margin-top: 1.5rem;
+            padding: 1rem;
+            border-radius: 4px;
+            display: none;
+        }
+        
+        .deployment-status.success {
+            background-color: #e9f7ef;
+            border-left: 4px solid var(--success-color);
+            color: var(--success-color);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .deployment-status.error {
+            background-color: #ffeaea;
+            border-left: 4px solid var(--danger-color);
+            color: var(--danger-color);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .transaction-link {
+            color: var(--primary-color);
+            text-decoration: none;
+            margin-top: 0.5rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .transaction-link:hover {
+            text-decoration: underline;
+        }
+        
+        @media (max-width: 768px) {
+            .app-container {
+                flex-direction: column;
+            }
+            
+            .sidebar {
+                width: 100%;
+                padding: 1rem;
+            }
+            
+            .code-panels {
+                flex-direction: column;
+            }
+            
+            .code-panel {
+                border-right: none;
+                border-bottom: 1px solid #eee;
+            }
+            
+            .action-bar {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <aside class="sidebar">
+            <div class="logo">
+                <i class="fas fa-code"></i>
+                <span>Solidity → Clarity</span>
+            </div>
+            <ul class="nav-links">
+                <li><a href="#" class="active"><i class="fas fa-exchange-alt"></i> Converter</a></li>
+                <li><a href="#"><i class="fas fa-rocket"></i> Deployment</a></li>
+                <li><a href="#"><i class="fas fa-book"></i> Documentation</a></li>
+                <li><a href="#"><i class="fas fa-cube"></i> Examples</a></li>
+                <li><a href="#"><i class="fas fa-cog"></i> Settings</a></li>
+            </ul>
+        </aside>
+        
+        <main class="main-content">
+            <div class="header">
+                <h1><i class="fas fa-code"></i> Solidity to Clarity Code Converter</h1>
+                <div class="status-indicators">
+                    <div class="status backend"><i class="fas fa-check-circle"></i> Backend Connected</div>
+                    <div class="status ready" id="status-indicator"><i class="fas fa-ready"></i> Ready</div>
+                </div>
+            </div>
+            
+            <div class="converter-container">
+                <div class="code-panels">
+                    <div class="code-panel">
+                        <div class="panel-header">
+                            <h3><i class="fab fa-ethereum"></i> Solidity Code</h3>
+                        </div>
+                        <div class="code-container">
+                            <textarea class="code-input" id="solidity-code" placeholder="Paste your Solidity code here...">// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.20;
+
+contract HelloWorld {
+    string public message;
+
+    constructor() {
+        message = "Hello, World!";
+    }
+
+    function setMessage(string calldata newMessage) external {
+        message = newMessage;
+    }
+
+    function getMessage() external view returns (string memory) {
+        return message;
+    }
+}</textarea>
+                        </div>
+                    </div>
+                    
+                    <div class="code-panel">
+                        <div class="panel-header">
+                            <h3><i class="fas fa-file-code"></i> Clarity Code</h3>
+                            <button class="copy-btn" id="copy-btn"><i class="fas fa-copy"></i> Copy</button>
+                        </div>
+                        <div class="code-container">
+                            <pre class="code-output" id="clarity-code"></pre>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="action-bar">
+                    <div class="examples">
+                        <h3>Try Examples:</h3>
+                        <div class="example-buttons">
+                            <button class="example-btn" data-example="hello-world">Hello World</button>
+                            <button class="example-btn" data-example="nft">NFT Contract</button>
+                            <button class="example-btn" data-example="token">Token Contract</button>
+                        </div>
+                    </div>
+                    <button class="convert-btn" id="convert-btn"><i class="fas fa-sync-alt"></i> Convert to Clarity</button>
+                </div>
+            </div>
+            
+            <div class="deployment-panel">
+                <div class="deployment-header">
+                    <h2><i class="fas fa-rocket"></i> Deploy Clarity Contract</h2>
+                </div>
+                <div class="deployment-content">
+                    <div class="form-group">
+                        <label for="contract-name">Contract Name</label>
+                        <input type="text" id="contract-name" class="form-control" placeholder="my-contract">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="network">Network</label>
+                        <select id="network" class="form-control">
+                            <option value="testnet">Stacks Testnet</option>
+                            <option value="mainnet">Stacks Mainnet</option>
+                            <option value="devnet">Local Devnet</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="private-key">Private Key (for deployment)</label>
+                        <input type="password" id="private-key" class="form-control" placeholder="Enter your private key">
+                    </div>
+                    
+                    <button class="deploy-btn" id="deploy-btn"><i class="fas fa-paper-plane"></i> Deploy Contract</button>
+                    
+                    <div class="deployment-status success" id="deployment-success">
+                        <i class="fas fa-check-circle"></i>
+                        <div>
+                            <p>Contract deployed successfully!</p>
+                            <a href="#" class="transaction-link" id="transaction-link">
+                                <i class="fas fa-external-link-alt"></i>
+                                View transaction
+                            </a>
+                        </div>
+                    </div>
+                    
+                    <div class="deployment-status error" id="deployment-error">
+                        <i class="fas fa-exclamation-circle"></i>
+                        <p>Error deploying contract. Please try again.</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="error-message" class="error-message" style="display: none;">
+                <i class="fas fa-exclamation-circle"></i>
+                <span></span>
+            </div>
+        </main>
+    </div>
+    
+    <div class="notification" id="notification">
+        <i class="fas fa-check-circle"></i>
+        <span>Code copied to clipboard!</span>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const solidityTextarea = document.getElementById('solidity-code');
+            const clarityOutput = document.getElementById('clarity-code');
+            const convertBtn = document.getElementById('convert-btn');
+            const copyBtn = document.getElementById('copy-btn');
+            const deployBtn = document.getElementById('deploy-btn');
+            const statusIndicator = document.getElementById('status-indicator');
+            const errorMessage = document.getElementById('error-message');
+            const errorMessageSpan = errorMessage.querySelector('span');
+            const notification = document.getElementById('notification');
+            const exampleButtons = document.querySelectorAll('.example-btn');
+            const deploymentSuccess = document.getElementById('deployment-success');
+            const deploymentError = document.getElementById('deployment-error');
+            const transactionLink = document.getElementById('transaction-link');
+            
+            // Example code snippets
+            const examples = {
+                'hello-world': `// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.20;
+
+contract HelloWorld {
+    string public message;
+
+    constructor() {
+        message = "Hello, World!";
+    }
+
+    function setMessage(string calldata newMessage) external {
+        message = newMessage;
+    }
+
+    function getMessage() external view returns (string memory) {
+        return message;
+    }
+}`,
+                'nft': `// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.20;
+
+import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
+import "@openzeppelin/contracts/utils/Counters.sol";
+
+contract MyNFT is ERC721 {
+    using Counters for Counters.Counter;
+    Counters.Counter private _tokenIdCounter;
+
+    constructor() ERC721("MyNFT", "MNFT") {}
+
+    function safeMint(address to) public {
+        uint256 tokenId = _tokenIdCounter.current();
+        _tokenIdCounter.increment();
+        _safeMint(to, tokenId);
+    }
+}`,
+                'token': `// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.20;
+
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+
+contract MyToken is ERC20 {
+    constructor(uint256 initialSupply) ERC20("MyToken", "MTK") {
+        _mint(msg.sender, initialSupply * 10 ** decimals());
+    }
+}`
+            };
+            
+            // Set up example buttons
+            exampleButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    const exampleType = this.getAttribute('data-example');
+                    solidityTextarea.value = examples[exampleType];
+                    errorMessage.style.display = 'none';
+                });
+            });
+            
+            // Convert button handler
+            convertBtn.addEventListener('click', async function() {
+                const solidityCode = solidityTextarea.value.trim();
+                
+                if (!solidityCode) {
+                    showError('Please enter Solidity code to convert');
+                    return;
+                }
+                
+                setStatus('processing');
+                errorMessage.style.display = 'none';
+                
+                try {
+                    // In a real implementation, this would call your backend API
+                    // For this example, we'll simulate the API call with a timeout
+                    const clarityCode = await simulateConversion(solidityCode);
+                    clarityOutput.textContent = clarityCode;
+                    setStatus('ready');
+                } catch (error) {
+                    showError(error.message);
+                    setStatus('error');
+                }
+            });
+            
+            // Copy button handler
+            copyBtn.addEventListener('click', function() {
+                if (clarityOutput.textContent) {
+                    navigator.clipboard.writeText(clarityOutput.textContent)
+                        .then(() => {
+                            showNotification();
+                        })
+                        .catch(err => {
+                            console.error('Failed to copy: ', err);
+                        });
+                }
+            });
+            
+            // Deploy button handler
+            deployBtn.addEventListener('click', async function() {
+                const contractName = document.getElementById('contract-name').value.trim();
+                const privateKey = document.getElementById('private-key').value.trim();
+                const network = document.getElementById('network').value;
+                const clarityCode = clarityOutput.textContent;
+                
+                if (!clarityCode) {
+                    showError('Please convert Solidity code to Clarity first');
+                    return;
+                }
+                
+                if (!contractName) {
+                    showError('Please enter a contract name');
+                    return;
+                }
+                
+                if (!privateKey) {
+                    showError('Please enter your private key for deployment');
+                    return;
+                }
+                
+                setStatus('processing');
+                deploymentSuccess.style.display = 'none';
+                deploymentError.style.display = 'none';
+                
+                try {
+                    // In a real implementation, this would call your backend API
+                    // For this example, we'll simulate the deployment with a timeout
+                    const txId = await simulateDeployment(contractName, clarityCode, network, privateKey);
+                    
+                    // Show success message
+                    deploymentSuccess.style.display = 'flex';
+                    transactionLink.href = `https://explorer.stacks.co/txid/${txId}?chain=${network}`;
+                    setStatus('ready');
+                } catch (error) {
+                    deploymentError.style.display = 'flex';
+                    setStatus('error');
+                }
+            });
+            
+            // Simulate API call to backend
+            async function simulateConversion(solidityCode) {
+                // Simulate network delay
+                await new Promise(resolve => setTimeout(resolve, 1500));
+                
+                // This is a simplified conversion for demonstration
+                // In a real implementation, this would be done by your backend
+                
+                // Check if it's the HelloWorld contract
+                if (solidityCode.includes('HelloWorld') && solidityCode.includes('message')) {
+                    return `(define-data-var message (string-ascii 100) "Hello, World!")
+                    
+(define-public (set-message (new-message (string-ascii 100)))
+    (begin
+        (var-set message new-message)
+        (ok true)))
+        
+(define-public (get-message)
+    (ok (var-get message)))`;
+                }
+                
+                // Check if it's an NFT contract
+                if (solidityCode.includes('ERC721') || solidityCode.includes('safeMint')) {
+                    return `;; NFT contract in Clarity
+(define-non-fungible-token nft uint)
+                    
+(define-public (safe-mint (to principal))
+    (begin
+        (nft-mint? nft (get-block-height) to)
+        (ok true)))
+        
+(define-public (get-owner (token-id uint))
+    (ok (nft-get-owner? nft token-id)))
+    
+(define-public (transfer (to principal) (token-id uint))
+    (nft-transfer? nft token-id tx-sender to))`;
+                }
+                
+                // Check if it's a token contract
+                if (solidityCode.includes('ERC20') || solidityCode.includes('_mint')) {
+                    return `;; Fungible token contract in Clarity
+(define-fungible-token my-token)
+                    
+(define-public (mint (to principal) (amount uint))
+    (begin
+        (ft-mint? my-token amount to)
+        (ok true)))
+        
+(define-public (transfer (to principal) (amount uint))
+    (ft-transfer? my-token amount tx-sender to))
+    
+(define-public (get-balance (who principal))
+    (ok (ft-get-balance my-token who)))`;
+                }
+                
+                // Default response for other contracts
+                return `;; Clarity code conversion
+;; Note: This is a simplified conversion. Complex contracts may require manual adjustments.
+
+(define-data-var stored-data (string-ascii 100) "default value")
+
+(define-public (set-value (new-value (string-ascii 100)))
+    (begin
+        (var-set stored-data new-value)
+        (ok true)))
+        
+(define-public (get-value)
+    (ok (var-get stored-data)))
+
+;; Add your custom contract functions below based on your Solidity code`;
+            }
+            
+            // Simulate deployment
+            async function simulateDeployment(contractName, clarityCode, network, privateKey) {
+                // Simulate network delay
+                await new Promise(resolve => setTimeout(resolve, 3000));
+                
+                // Generate a fake transaction ID for demonstration
+                const txId = '0x' + Array.from({length: 64}, () => 
+                    Math.floor(Math.random() * 16).toString(16)).join('');
+                
+                return txId;
+            }
+            
+            function setStatus(status) {
+                statusIndicator.textContent = status.charAt(0).toUpperCase() + status.slice(1);
+                statusIndicator.className = 'status ' + status;
+                
+                // Update icon
+                const icon = statusIndicator.querySelector('i') || document.createElement('i');
+                statusIndicator.innerHTML = '';
+                
+                switch(status) {
+                    case 'ready':
+                        icon.className = 'fas fa-check-circle';
+                        break;
+                    case 'processing':
+                        icon.className = 'fas fa-spinner fa-spin';
+                        break;
+                    case 'error':
+                        icon.className = 'fas fa-exclamation-circle';
+                        break;
+                }
+                
+                statusIndicator.appendChild(icon);
+                statusIndicator.appendChild(document.createTextNode(' ' + status.charAt(0).toUpperCase() + status.slice(1)));
+            }
+            
+            function showError(message) {
+                errorMessageSpan.textContent = message;
+                errorMessage.style.display = 'flex';
+            }
+            
+            function showNotification() {
+                notification.classList.add('show');
+                setTimeout(() => {
+                    notification.classList.remove('show');
+                }, 2000);
+            }
+            
+            // Initialize the UI
+            setStatus('ready');
+        });
+    </script>
+</body>
 </html>
