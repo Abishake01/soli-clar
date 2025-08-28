@@ -23,3 +23,45 @@ footer {
   color: #777;
   font-size: 14px;
 }
+
+.navbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.nav-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.brand {
+  font-weight: 700;
+  color: #333;
+  text-decoration: none;
+  margin-right: 8px;
+}
+
+.nav-link {
+  text-decoration: none;
+  color: #555;
+  padding: 6px 10px;
+  border-radius: 6px;
+}
+
+.nav-link.active {
+  background: #eef2ff;
+  color: #1e3a8a;
+}
+
+.wallet-button {
+  background: #111827;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 12px;
+  cursor: pointer;
+}

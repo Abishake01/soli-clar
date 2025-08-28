@@ -5,6 +5,8 @@ import requests
 import json
 import logging
 from dotenv import load_dotenv
+import uuid
+import time
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -166,6 +168,104 @@ Solidity code:
         logger.error(f"Unexpected error: {str(e)}")
         response = make_response(jsonify({"error": f"An unexpected error occurred: {str(e)}"}), 500)
         return add_cors_headers(response)
+
+@app.route('/api/explain', methods=['POST', 'OPTIONS'])
+def explain_code():
+    if request.method == 'OPTIONS':
+        return add_cors_headers(make_response())
+
+    if not GROQ_API_KEY:
+        response = make_response(jsonify({"error": "Groq API key is not configured"}), 500)
+        return add_cors_headers(response)
+
+    data = request.get_json()
+    clarity_code = data.get('clarityCode')
+
+    if not clarity_code:
+        response = make_response(jsonify({"error": "No Clarity code provided"}), 400)
+        return add_cors_headers(response)
+
+    try:
+        headers = {
+            "Authorization": f"Bearer {GROQ_API_KEY}",
+            "Content-Type": "application/json"
+        }
+
+        prompt = f"""
+You are an expert Clarity developer and teacher. Explain the following Clarity smart contract to a developer who knows Solidity. Cover:
+- What the contract does at a high level
+- Key differences versus a typical Solidity approach
+- Any important security or clarity-specific concerns
+- How to deploy and interact using Stacks CLI
+
+Return a concise explanation with short sections and bullet points where helpful.
+
+Clarity code:
+```
+{clarity_code}
+```
+"""
+
+        payload = {
+            "model": "llama3-8b-8192",
+            "messages": [
+                {"role": "system", "content": "You are a senior Clarity engineer and educator."},
+                {"role": "user", "content": prompt}
+            ],
+            "temperature": 0.3,
+            "max_tokens": 1200
+        }
+
+        logger.info("Sending explain request to Groq API")
+        response = requests.post(GROQ_API_URL, headers=headers, json=payload)
+        logger.info(f"Groq API response status code (explain): {response.status_code}")
+        response.raise_for_status()
+
+        result = response.json()
+        explanation = result['choices'][0]['message']['content'].strip()
+
+        res = make_response(jsonify({"explanation": explanation}))
+        return add_cors_headers(res)
+    except Exception as e:
+        logger.error(f"Explain endpoint error: {str(e)}")
+        res = make_response(jsonify({"error": f"Failed to generate explanation: {str(e)}"}), 500)
+        return add_cors_headers(res)
+
+@app.route('/api/deploy', methods=['POST', 'OPTIONS'])
+def deploy_contract():
+    """Mock deployment endpoint. In a real implementation, integrate with Stacks transactions.
+    Accepts: { clarityCode: string, contractName?: string, network?: 'testnet'|'mainnet' }
+    Returns: { txId, contractAddress, contractId }
+    """
+    if request.method == 'OPTIONS':
+        return add_cors_headers(make_response())
+
+    data = request.get_json() or {}
+    clarity_code = data.get('clarityCode')
+    contract_name = (data.get('contractName') or 'converted-contract').strip()
+    network = (data.get('network') or 'testnet').lower()
+
+    if not clarity_code:
+        response = make_response(jsonify({"error": "No Clarity code provided"}), 400)
+        return add_cors_headers(response)
+
+    # Simulate processing time
+    time.sleep(0.3)
+
+    # Create deterministic-ish mock identifiers
+    tx_id = str(uuid.uuid4()).replace('-', '')
+    mock_address = 'ST' + tx_id[:38]  # Stacks addresses start with ST on testnet/mainnet
+    contract_id = f"{mock_address}.{contract_name}"
+
+    logger.info(f"Mock deployed contract {contract_id} on {network}")
+
+    res = make_response(jsonify({
+        "txId": tx_id,
+        "contractAddress": mock_address,
+        "contractId": contract_id,
+        "network": network
+    }))
+    return add_cors_headers(res)
 
 @app.route('/api/health', methods=['GET', 'OPTIONS'])
 def health_check():

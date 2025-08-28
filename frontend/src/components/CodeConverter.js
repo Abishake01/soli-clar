@@ -10,10 +10,14 @@ const API_BASE_URL = 'http://localhost:5000';
 const CodeConverter = () => {
   const [solidityCode, setSolidityCode] = useState('');
   const [clarityCode, setClarityCode] = useState('');
+  const [versions, setVersions] = useState([]);
+  const [selectedVersionIndex, setSelectedVersionIndex] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isDeploying, setIsDeploying] = useState(false);
   const [error, setError] = useState('');
   const [backendStatus, setBackendStatus] = useState('checking');
   const [copied, setCopied] = useState(false);
+  const [deployResult, setDeployResult] = useState(null);
   const clarityCodeRef = useRef(null);
 
   // Check backend status on component mount
@@ -57,7 +61,13 @@ const CodeConverter = () => {
     try {
       // Make direct API call to backend
       const response = await axios.post(`${API_BASE_URL}/api/convert`, { solidityCode });
-      setClarityCode(response.data.clarityCode);
+      const output = response.data.clarityCode || '';
+      setClarityCode(output);
+      if (output) {
+        const newVersion = { timestamp: Date.now(), clarityCode: output };
+        setVersions((prev) => [newVersion, ...prev].slice(0, 10));
+        setSelectedVersionIndex(0);
+      }
     } catch (err) {
       console.error('Conversion error:', err);
       
@@ -76,6 +86,30 @@ const CodeConverter = () => {
       }
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleRestoreVersion = (index) => {
+    setSelectedVersionIndex(index);
+    setClarityCode(versions[index]?.clarityCode || '');
+  };
+
+  const handleDeploy = async () => {
+    if (!clarityCode.trim()) return;
+    setIsDeploying(true);
+    setDeployResult(null);
+    setError('');
+    try {
+      const response = await axios.post(`${API_BASE_URL}/api/deploy`, {
+        clarityCode,
+        contractName: 'converted-contract',
+        network: 'testnet'
+      });
+      setDeployResult(response.data);
+    } catch (err) {
+      setError(err.response?.data?.error || err.message || 'Deploy failed');
+    } finally {
+      setIsDeploying(false);
     }
   };
 
@@ -120,6 +154,15 @@ const CodeConverter = () => {
                 >
                   {copied ? 'Copied!' : 'Copy'}
                 </button>
+                <button 
+                  className="copy-button" 
+                  onClick={handleDeploy}
+                  disabled={isDeploying}
+                  title="Deploy to Stacks (mock)"
+                  style={{ marginLeft: '8px', backgroundColor: '#10b981' }}
+                >
+                  {isDeploying ? 'Deploying...' : 'Deploy'}
+                </button>
               </div>
               <div className="code-container" ref={clarityCodeRef}>
                 <SyntaxHighlighter
@@ -133,6 +176,11 @@ const CodeConverter = () => {
                   {clarityCode}
                 </SyntaxHighlighter>
               </div>
+              {deployResult && (
+                <div className="status-bar" style={{ justifyContent: 'flex-start', marginTop: '8px' }}>
+                  <div className="status-indicator">Deployed: {deployResult.contractId}</div>
+                </div>
+              )}
             </>
           ) : (
             <div className="empty-output">
@@ -141,6 +189,24 @@ const CodeConverter = () => {
           )}
         </div>
       </div>
+
+      {versions.length > 0 && (
+        <div>
+          <h4 style={{ textAlign: 'left' }}>Versions</h4>
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+            {versions.map((v, idx) => (
+              <button
+                key={v.timestamp}
+                className="copy-button"
+                onClick={() => handleRestoreVersion(idx)}
+                style={{ backgroundColor: selectedVersionIndex === idx ? '#6366f1' : '#4b5563' }}
+              >
+                {new Date(v.timestamp).toLocaleTimeString()}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
       
       {error && <div className="error-message">{error}</div>}
       
