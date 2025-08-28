@@ -1,0 +1,25 @@
+.App {
+  text-align: center;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.App-header {
+  margin-bottom: 30px;
+}
+
+.App-header h1 {
+  color: #333;
+  margin-bottom: 10px;
+}
+
+.App-header p {
+  color: #666;
+}
+
+footer {
+  margin-top: 40px;
+  color: #777;
+  font-size: 14px;
+}
